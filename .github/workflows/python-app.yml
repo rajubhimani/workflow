@@ -1,0 +1,47 @@
+name: Python application
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Set up Python (uv uses the system Python)
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # Install uv
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      # Sync dependencies (from pyproject.toml or requirements.txt)
+      - name: Install dependencies
+        run: |
+          uv sync --frozen || uv pip install -r requirements.txt
+          uv pip install flake8 pytest
+
+      # Lint
+      - name: Lint with flake8
+        run: |
+          uv run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          uv run flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      # Tests
+      - name: Test with pytest
+        run: |
+          uv run pytest
